@@ -14,11 +14,16 @@ git clone https://github.com/adeel26in/dockerpkg.git
 cd dockerpkg
 
 
-pip install .
+pipx install .
 
 Uninstall instrcutions:
 
 If you installed dockerpkg via pip, you can uninstall it easily:
 
-pip uninstall dockerpkg or pip3 uninstall dockerpkg
+pipx uninstall dockerpkg
+
+If you also want to unistall GitHub directory run (usually):
+
+cd 
+rm -rf dockerpkg
 
