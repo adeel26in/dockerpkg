@@ -19,7 +19,6 @@ except DockerException:
 # -------------------
 
 def install_image(image_name):
-    """Pull a Docker image with optional tag."""
     try:
         print(Fore.CYAN + f"Pulling image {image_name}...")
         client.images.pull(image_name)
@@ -167,6 +166,41 @@ def list_containers():
         print(Fore.RED + f"Error listing containers: {e}")
 
 # -------------------
+# HELP COMMAND
+# -------------------
+
+def show_help():
+    help_text = f"""
+{Fore.CYAN}dockerpkg - Docker Package Manager CLI{Style.RESET_ALL}
+
+{Fore.YELLOW}Image Management:{Style.RESET_ALL}
+  install <image[:tag]>       Pull a Docker image (e.g., nginx:stable)
+  removei <image[:tag]>       Remove a Docker image
+  listi                       List all images
+  update <image[:tag]>        Update a specific image
+  update-all                  Update all local images
+
+{Fore.YELLOW}Container Management:{Style.RESET_ALL}
+  run <image[:tag]> [--name]  Run a container from an image (detached)
+  start <container>           Start a container by ID or name
+  stop <container>            Stop a container by ID or name
+  restart <container>         Restart a container
+  status <container>          Show container status
+  removec <container>         Remove a container
+  listc                       List all containers
+
+{Fore.YELLOW}General:{Style.RESET_ALL}
+  help                        Show this help message
+
+{Fore.CYAN}Examples:{Style.RESET_ALL}
+  dockerpkg install nginx:stable
+  dockerpkg run nginx:stable --name my-nginx
+  dockerpkg listc
+  dockerpkg update-all
+"""
+    print(help_text)
+
+# -------------------
 # MAIN CLI
 # -------------------
 
@@ -210,6 +244,9 @@ def main():
 
     subparsers.add_parser("listc")
 
+    # Help command
+    subparsers.add_parser("help", help="Show dockerpkg help")
+
     # Execute commands
     args = parser.parse_args()
 
@@ -237,6 +274,8 @@ def main():
         remove_container(args.container)
     elif args.command == "listc":
         list_containers()
+    elif args.command == "help" or args.command is None:
+        show_help()
     else:
         parser.print_help()
 
