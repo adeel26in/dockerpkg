@@ -15,3 +15,10 @@ cd dockerpkg
 
 
 pip install .
+
+Uninstall instrcutions:
+
+If you installed dockerpkg via pip, you can uninstall it easily:
+
+pip uninstall dockerpkg or pip3 uninstall dockerpkg
+
