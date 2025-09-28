@@ -22,8 +22,7 @@ If you installed dockerpkg via pip, you can uninstall it easily:
 
 pipx uninstall dockerpkg
 
-If you also want to unistall GitHub directory run (usually):
+If you also want to unistall GitHub directory run:
 
-cd 
 rm -rf dockerpkg
 
