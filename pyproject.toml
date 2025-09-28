@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dockerpkg"
+version = "0.1.0"
+description = "A simple package manager for Docker"
+authors = [{name="adeel26in"}]
+dependencies = ["docker", "colorama"]
+
+[project.scripts]
+dockerpkg = "dockerpkg:main"
