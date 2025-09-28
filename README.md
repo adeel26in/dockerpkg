@@ -4,7 +4,7 @@ A simple package manager–like CLI tool for Docker, written in Python and easy 
 
 ---
 
-Installation (No requirements.txt)
+Installation (No requirements.txt):
 
 Clone this repository and install with pip:
 
