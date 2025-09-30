@@ -12,6 +12,6 @@ pipx install --system-site-packages git+https://github.com/adeel26in/dockerpkg.g
 
 Uninstall instrcutions:
 
-If you installed dockerpkg via pipz, you can uninstall it easily:
+If you installed dockerpkg via pipx, you can uninstall it easily:
 
-pipx uninstall dockerpkg
+pipx uninstall dockerpkg --verbose
