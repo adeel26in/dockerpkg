@@ -4,6 +4,12 @@ A simple package manager–like CLI tool for Docker, written in Python and easy 
 
 ---
 
+
+- Python 3.8+ installed
+- Docker installed and running
+- On Linux, make sure your user can run Docker without sudo: docker ps
+
+
 Installation (MacOS and Windows):
 
 # Install pipx if not installed
