@@ -1,277 +1,109 @@
 #!/usr/bin/env python3
 import argparse
 import docker
-from docker.errors import DockerException, ImageNotFound, NotFound, APIError
-from colorama import init, Fore, Style
+from colorama import Fore, Style, init
 
-# Initialize colorama
 init(autoreset=True)
 
-# Docker client
-try:
-    client = docker.from_env()
-except DockerException:
-    print(Fore.RED + "Error: Could not connect to the Docker daemon. Is Docker running?")
-    exit(1)
-
-# -------------------
-# IMAGE MANAGEMENT
-# -------------------
-
-def install_image(image_name):
+# ------------------ Docker client helper ------------------
+def get_client():
+    """Return a Docker client connected to the environment."""
     try:
-        print(Fore.CYAN + f"Pulling image {image_name}...")
-        client.images.pull(image_name)
-        print(Fore.GREEN + f"Image {image_name} pulled successfully.")
-    except ImageNotFound:
-        print(Fore.RED + f"Error: Image '{image_name}' not found.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
+        return docker.from_env()
     except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
+        print(Fore.RED + f"Error: Could not connect to the Docker daemon. {e}")
+        exit(1)
 
-def remove_image(image_name):
+# ------------------ Image management ------------------
+def install_image(image):
+    client = get_client()
     try:
-        client.images.remove(image=image_name, force=True)
-        print(Fore.GREEN + f"Image {image_name} removed.")
-    except ImageNotFound:
-        print(Fore.RED + f"Error: Image '{image_name}' not found.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
+        print(Fore.CYAN + f"Pulling image {image}...")
+        client.images.pull(image)
+        print(Fore.GREEN + f"Image {image} installed successfully.")
     except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
+        print(Fore.RED + f"Failed to install image {image}: {e}")
+
+def remove_image(image):
+    client = get_client()
+    try:
+        client.images.remove(image, force=True)
+        print(Fore.GREEN + f"Image {image} removed successfully.")
+    except Exception as e:
+        print(Fore.RED + f"Failed to remove image {image}: {e}")
 
 def list_images():
+    client = get_client()
+    images = client.images.list()
+    if not images:
+        print(Fore.YELLOW + "No images found.")
+        return
+    print(Fore.CYAN + "Available images:")
+    for img in images:
+        tags = ", ".join(img.tags) if img.tags else "<none>"
+        print(f"- {tags}")
+
+# ------------------ Container management ------------------
+def run_container(image):
+    client = get_client()
     try:
-        images = client.images.list()
-        if not images:
-            print(Fore.YELLOW + "No images found.")
-            return
-        print(f"{'ID':<15} IMAGE TAGS")
-        for img in images:
-            tags = img.tags if img.tags else ["<none>:<none>"]
-            print(f"{Fore.WHITE}{img.short_id:<15} {Fore.CYAN}{tags}")
+        print(Fore.CYAN + f"Starting container from {image}...")
+        container = client.containers.run(image, detach=True)
+        print(Fore.GREEN + f"Container {container.short_id} running.")
     except Exception as e:
-        print(Fore.RED + f"Error listing images: {e}")
+        print(Fore.RED + f"Failed to run container {image}: {e}")
 
-def update_image(image_name):
+def remove_container(container_id_or_name):
+    client = get_client()
     try:
-        print(Fore.CYAN + f"Updating image {image_name}...")
-        client.images.pull(image_name)
-        print(Fore.GREEN + f"Image {image_name} updated successfully.")
-    except ImageNotFound:
-        print(Fore.RED + f"Error: Image '{image_name}' not found.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-    except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
-
-def update_all_images():
-    try:
-        images = client.images.list()
-        if not images:
-            print(Fore.YELLOW + "No images to update.")
-            return
-        for img in images:
-            for tag in img.tags:
-                print(Fore.CYAN + f"Updating {tag}...")
-                client.images.pull(tag)
-                print(Fore.GREEN + f"{tag} updated successfully.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-    except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
-
-# -------------------
-# CONTAINER MANAGEMENT
-# -------------------
-
-def run_container(image_name, name=None):
-    try:
-        kwargs = {"detach": True}
-        if name:
-            kwargs["name"] = name
-        container = client.containers.run(image_name, **kwargs)
-        print(Fore.GREEN + f"Container started: {container.name} (ID {container.id[:12]})")
-    except ImageNotFound:
-        print(Fore.RED + f"Error: Image '{image_name}' not found. Pull it first with 'dockerpkg install'.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-    except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
-
-def start_container(identifier):
-    try:
-        container = client.containers.get(identifier)
-        container.start()
-        print(Fore.GREEN + f"Container '{container.name}' started.")
-    except NotFound:
-        print(Fore.RED + f"No container found with ID or name '{identifier}'.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-
-def stop_container(identifier):
-    try:
-        container = client.containers.get(identifier)
-        container.stop()
-        print(Fore.GREEN + f"Container '{container.name}' stopped.")
-    except NotFound:
-        print(Fore.RED + f"No container found with ID or name '{identifier}'.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-
-def restart_container(identifier):
-    try:
-        container = client.containers.get(identifier)
-        container.restart()
-        print(Fore.GREEN + f"Container '{container.name}' restarted.")
-    except NotFound:
-        print(Fore.RED + f"No container found with ID or name '{identifier}'.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
-
-def status_container(identifier):
-    try:
-        container = client.containers.get(identifier)
-        status_color = Fore.GREEN if "running" in container.status else Fore.YELLOW
-        print(f"Container '{container.name}' status: {status_color}{container.status}")
-    except NotFound:
-        print(Fore.RED + f"No container found with ID or name '{identifier}'.")
-
-def remove_container(identifier):
-    try:
-        container = client.containers.get(identifier)
+        container = client.containers.get(container_id_or_name)
         container.remove(force=True)
-        print(Fore.GREEN + f"Container '{identifier}' removed.")
-    except NotFound:
-        print(Fore.RED + f"No container found with ID or name '{identifier}'.")
-    except APIError as e:
-        print(Fore.RED + f"Docker API error: {e.explanation}")
+        print(Fore.GREEN + f"Container {container_id_or_name} removed successfully.")
     except Exception as e:
-        print(Fore.RED + f"Unexpected error: {e}")
+        print(Fore.RED + f"Failed to remove container {container_id_or_name}: {e}")
 
 def list_containers():
-    try:
-        containers = client.containers.list(all=True)
-        if not containers:
-            print(Fore.YELLOW + "No containers found.")
-            return
-        print(f"{'ID':<15} {'NAME':<25} {'IMAGE':<25} STATUS")
-        for c in containers:
-            status_color = Fore.GREEN if "running" in c.status else Fore.YELLOW
-            name = c.name
-            image = c.image.tags[0] if c.image.tags else "<none>:<none>"
-            print(f"{Fore.WHITE}{c.id[:12]:<15} {Fore.CYAN}{name:<25} {Fore.CYAN}{image:<25} {status_color}{c.status}")
-    except Exception as e:
-        print(Fore.RED + f"Error listing containers: {e}")
+    client = get_client()
+    containers = client.containers.list(all=True)
+    if not containers:
+        print(Fore.YELLOW + "No containers found.")
+        return
+    print(Fore.CYAN + "Available containers:")
+    for c in containers:
+        print(f"- {c.name} ({c.short_id}) [{c.status}]")
 
-# -------------------
-# HELP COMMAND
-# -------------------
-
+# ------------------ Help ------------------
 def show_help():
-    help_text = f"""
-{Fore.CYAN}dockerpkg - Docker Package Manager CLI{Style.RESET_ALL}
+    print(Fore.MAGENTA + """
+dockerpkg - APT-like package manager for Docker
 
-{Fore.YELLOW}Image Management:{Style.RESET_ALL}
-  install <image[:tag]>       Pull a Docker image (e.g., nginx:stable)
-  removei <image[:tag]>       Remove a Docker image
-  listi                       List all images
-  update <image[:tag]>        Update a specific image
-  update-all                  Update all local images
+Usage:
+  dockerpkg install <image[:tag]>    Pull an image
+  dockerpkg removei <image>          Remove an image
+  dockerpkg run <image[:tag]>        Run a container (detached)
+  dockerpkg removec <container>      Remove a container (by name or ID)
+  dockerpkg listi                    List all images
+  dockerpkg listc                    List all containers
+  dockerpkg help                     Show this help message
+""")
 
-{Fore.YELLOW}Container Management:{Style.RESET_ALL}
-  run <image[:tag]> [--name]  Run a container from an image (detached)
-  start <container>           Start a container by ID or name
-  stop <container>            Stop a container by ID or name
-  restart <container>         Restart a container
-  status <container>          Show container status
-  removec <container>         Remove a container
-  listc                       List all containers
-
-{Fore.YELLOW}General:{Style.RESET_ALL}
-  help                        Show this help message
-
-{Fore.CYAN}Examples:{Style.RESET_ALL}
-  dockerpkg install nginx:stable
-  dockerpkg run nginx:stable --name my-nginx
-  dockerpkg listc
-  dockerpkg update-all
-"""
-    print(help_text)
-
-# -------------------
-# MAIN CLI
-# -------------------
-
+# ------------------ CLI parser ------------------
 def main():
-    parser = argparse.ArgumentParser(description="dockerpkg - Docker package manager CLI")
-    subparsers = parser.add_subparsers(dest="command")
-
-    # Image commands
-    install_parser = subparsers.add_parser("install")
-    install_parser.add_argument("image", help="Image name with optional tag to install")
-
-    removei_parser = subparsers.add_parser("removei")
-    removei_parser.add_argument("image", help="Image name with optional tag to remove")
-
-    subparsers.add_parser("listi")
-
-    update_parser = subparsers.add_parser("update")
-    update_parser.add_argument("image", help="Image name with optional tag to update")
-
-    subparsers.add_parser("update-all")
-
-    # Container commands
-    run_parser = subparsers.add_parser("run")
-    run_parser.add_argument("image", help="Image name with optional tag to run a container from")
-    run_parser.add_argument("--name", help="Optional container name")
-
-    start_parser = subparsers.add_parser("start")
-    start_parser.add_argument("container", help="Container ID or name to start")
-
-    stop_parser = subparsers.add_parser("stop")
-    stop_parser.add_argument("container", help="Container ID or name to stop")
-
-    restart_parser = subparsers.add_parser("restart")
-    restart_parser.add_argument("container", help="Container ID or name to restart")
-
-    status_parser = subparsers.add_parser("status")
-    status_parser.add_argument("container", help="Container ID or name to show status")
-
-    removec_parser = subparsers.add_parser("removec")
-    removec_parser.add_argument("container", help="Container ID or name to remove")
-
-    subparsers.add_parser("listc")
-
-    # Help command
-    subparsers.add_parser("help", help="Show dockerpkg help")
-
-    # Execute commands
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("command", nargs="?", help="Command to run")
+    parser.add_argument("target", nargs="?", help="Target (image or container)")
     args = parser.parse_args()
 
     if args.command == "install":
-        install_image(args.image)
+        install_image(args.target)
     elif args.command == "removei":
-        remove_image(args.image)
+        remove_image(args.target)
+    elif args.command == "run":
+        run_container(args.target)
+    elif args.command == "removec":
+        remove_container(args.target)
     elif args.command == "listi":
         list_images()
-    elif args.command == "update":
-        update_image(args.image)
-    elif args.command == "update-all":
-        update_all_images()
-    elif args.command == "run":
-        run_container(args.image, name=args.name)
-    elif args.command == "start":
-        start_container(args.container)
-    elif args.command == "stop":
-        stop_container(args.container)
-    elif args.command == "restart":
-        restart_container(args.container)
-    elif args.command == "status":
-        status_container(args.container)
-    elif args.command == "removec":
-        remove_container(args.container)
     elif args.command == "listc":
         list_containers()
     elif args.command == "help" or args.command is None:
