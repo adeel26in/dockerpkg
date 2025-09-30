@@ -29,6 +29,11 @@ pip install git+https://github.com/adeel26in/dockerpkg.git
 
 dockerpkg help
 
+Optional: Add an alias for easy access (Chaneg bashrc if using zsh):
+
+echo 'alias dockerpkg="~/dockerpkg-venv/bin/dockerpkg"' >> ~/.bashrc
+source ~/.bashrc
+
 # Uninstallation (MacOS and Windows):
 
 pipx uninstall dockerpkg
