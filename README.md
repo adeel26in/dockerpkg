@@ -8,21 +8,16 @@ Installation (No requirements.txt):
 
 Clone this repository and install with pipx (NOTE: First install pipx):
 
-git clone https://github.com/adeel26in/dockerpkg.git
+pipx install git+https://github.com/adeel26in/dockerpkg.git
 
-
-cd dockerpkg
-
-
-pipx install .
 
 Uninstall instrcutions:
 
-If you installed dockerpkg via pip, you can uninstall it easily:
+If you installed dockerpkg via pipz, you can uninstall it easily:
 
 pipx uninstall dockerpkg
 
-If you also want to unistall GitHub directory run:
+If you also want to unistall GitHub directory run (Recommended):
 
 rm -rf dockerpkg
 
