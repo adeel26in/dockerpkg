@@ -1,115 +1,173 @@
+```python
 #!/usr/bin/env python3
-import argparse
 import docker
-from colorama import Fore, Style, init
+import argparse
+import os
+import sys
 
-init(autoreset=True)
 
-# ------------------ Docker client helper ------------------
 def get_client():
-    """Return a Docker client connected to the environment."""
+    """Return a Docker client that behaves like the docker CLI."""
+    docker_host = os.environ.get("DOCKER_HOST")
     try:
-        return docker.from_env()
+        if docker_host:
+            return docker.DockerClient(base_url=docker_host)
+        return docker.DockerClient(base_url="unix:///var/run/docker.sock")
+    except PermissionError:
+        print("❌ Permission denied while connecting to Docker.")
+        print("👉 Fix: Add your user to the docker group and re-login:")
+        print("   sudo usermod -aG docker $USER")
+        print("   newgrp docker   # or log out and back in")
+        sys.exit(1)
     except Exception as e:
-        print(Fore.RED + f"Error: Could not connect to the Docker daemon. {e}")
-        exit(1)
+        print(f"Error: Could not connect to the Docker daemon. {e}")
+        sys.exit(1)
 
-# ------------------ Image management ------------------
-def install_image(image):
+
+def install_image(image_name):
     client = get_client()
+    print(f"Pulling image: {image_name}")
     try:
-        print(Fore.CYAN + f"Pulling image {image}...")
-        client.images.pull(image)
-        print(Fore.GREEN + f"Image {image} installed successfully.")
+        client.images.pull(image_name)
+        print(f"✅ Image '{image_name}' installed successfully.")
     except Exception as e:
-        print(Fore.RED + f"Failed to install image {image}: {e}")
+        print(f"Error: {e}")
 
-def remove_image(image):
+
+def remove_image(image_name):
     client = get_client()
+    print(f"Removing image: {image_name}")
     try:
-        client.images.remove(image, force=True)
-        print(Fore.GREEN + f"Image {image} removed successfully.")
+        client.images.remove(image=image_name, force=True)
+        print(f"✅ Image '{image_name}' removed successfully.")
     except Exception as e:
-        print(Fore.RED + f"Failed to remove image {image}: {e}")
+        print(f"Error: {e}")
 
-def list_images():
-    client = get_client()
-    images = client.images.list()
-    if not images:
-        print(Fore.YELLOW + "No images found.")
-        return
-    print(Fore.CYAN + "Available images:")
-    for img in images:
-        tags = ", ".join(img.tags) if img.tags else "<none>"
-        print(f"- {tags}")
 
-# ------------------ Container management ------------------
-def run_container(image):
+def remove_container(container_name):
     client = get_client()
+    print(f"Removing container: {container_name}")
     try:
-        print(Fore.CYAN + f"Starting container from {image}...")
-        container = client.containers.run(image, detach=True)
-        print(Fore.GREEN + f"Container {container.short_id} running.")
+        container = None
+        try:
+            container = client.containers.get(container_name)
+        except docker.errors.NotFound:
+            containers = client.containers.list(all=True, filters={"name": container_name})
+            if containers:
+                container = containers[0]
+        if container:
+            container.remove(force=True)
+            print(f"✅ Container '{container_name}' removed successfully.")
+        else:
+            print(f"Error: Container '{container_name}' not found.")
     except Exception as e:
-        print(Fore.RED + f"Failed to run container {image}: {e}")
+        print(f"Error: {e}")
 
-def remove_container(container_id_or_name):
-    client = get_client()
-    try:
-        container = client.containers.get(container_id_or_name)
-        container.remove(force=True)
-        print(Fore.GREEN + f"Container {container_id_or_name} removed successfully.")
-    except Exception as e:
-        print(Fore.RED + f"Failed to remove container {container_id_or_name}: {e}")
 
 def list_containers():
     client = get_client()
-    containers = client.containers.list(all=True)
-    if not containers:
-        print(Fore.YELLOW + "No containers found.")
-        return
-    print(Fore.CYAN + "Available containers:")
-    for c in containers:
-        print(f"- {c.name} ({c.short_id}) [{c.status}]")
+    try:
+        containers = client.containers.list(all=True)
+        if not containers:
+            print("No containers found.")
+        else:
+            print("Containers:")
+            for container in containers:
+                print(f" - {container.name} ({container.id[:12]}) - {container.status}")
+    except Exception as e:
+        print(f"Error: {e}")
 
-# ------------------ Help ------------------
-def show_help():
-    print(Fore.MAGENTA + """
-dockerpkg - APT-like package manager for Docker
 
-Usage:
-  dockerpkg install <image[:tag]>    Pull an image
-  dockerpkg removei <image>          Remove an image
-  dockerpkg run <image[:tag]>        Run a container (detached)
-  dockerpkg removec <container>      Remove a container (by name or ID)
-  dockerpkg listi                    List all images
-  dockerpkg listc                    List all containers
-  dockerpkg help                     Show this help message
-""")
+def list_images():
+    client = get_client()
+    try:
+        images = client.images.list()
+        if not images:
+            print("No images found.")
+        else:
+            print("Images:")
+            for image in images:
+                tags = ", ".join(image.tags) if image.tags else "<none>"
+                print(f" - {image.short_id} {tags}")
+    except Exception as e:
+        print(f"Error: {e}")
 
-# ------------------ CLI parser ------------------
+
+def doctor():
+    """Run diagnostic checks for Docker connectivity."""
+    print("🔎 Running dockerpkg doctor...")
+    try:
+        client = get_client()
+        version = client.version()
+        print(f"✅ Connected to Docker daemon (API version: {version['ApiVersion']})")
+
+        client.images.list()
+        print("✅ Able to list images")
+
+        client.containers.list(all=True)
+        print("✅ Able to list containers")
+
+        print("🎉 All checks passed!")
+    except PermissionError:
+        print("❌ Permission denied. Try adding your user to the docker group:")
+        print("   sudo usermod -aG docker $USER")
+        print("   newgrp docker")
+    except Exception as e:
+        print(f"❌ Doctor check failed: {e}")
+
+
 def main():
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("command", nargs="?", help="Command to run")
-    parser.add_argument("target", nargs="?", help="Target (image or container)")
+    parser = argparse.ArgumentParser(
+        prog="dockerpkg",
+        description="dockerpkg: A package manager–like CLI for Docker"
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # install
+    install_parser = subparsers.add_parser("install", help="Install (pull) an image")
+    install_parser.add_argument("image", help="Image name (e.g., nginx:latest)")
+
+    # removei
+    removei_parser = subparsers.add_parser("removei", help="Remove an image")
+    removei_parser.add_argument("image", help="Image name (e.g., nginx:latest)")
+
+    # removec
+    removec_parser = subparsers.add_parser("removec", help="Remove a container")
+    removec_parser.add_argument("container", help="Container name or ID")
+
+    # listc
+    subparsers.add_parser("listc", help="List all containers")
+
+    # listi
+    subparsers.add_parser("listi", help="List all images")
+
+    # doctor
+    subparsers.add_parser("doctor", help="Run diagnostic checks")
+
+    # help
+    subparsers.add_parser("help", help="Show help message")
+
     args = parser.parse_args()
 
     if args.command == "install":
-        install_image(args.target)
+        install_image(args.image)
     elif args.command == "removei":
-        remove_image(args.target)
-    elif args.command == "run":
-        run_container(args.target)
+        remove_image(args.image)
     elif args.command == "removec":
-        remove_container(args.target)
-    elif args.command == "listi":
-        list_images()
+        remove_container(args.container)
     elif args.command == "listc":
         list_containers()
+    elif args.command == "listi":
+        list_images()
+    elif args.command == "doctor":
+        doctor()
     elif args.command == "help" or args.command is None:
-        show_help()
+        parser.print_help()
     else:
         parser.print_help()
 
+
 if __name__ == "__main__":
     main()
+```
