@@ -4,14 +4,37 @@ A simple package manager–like CLI tool for Docker, written in Python and easy 
 
 ---
 
-Installation (No requirements.txt):
+Installation (MacOS and Windows):
 
-Clone this repository and install with pipx (NOTE: First install pipx):
+# Install pipx if not installed
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 
+# Install dockerpkg
 pipx install --system-site-packages git+https://github.com/adeel26in/dockerpkg.git
 
-Uninstall instrcutions:
+# Test
+dockerpkg help
 
-If you installed dockerpkg via pipx, you can uninstall it easily:
+Installation (Linux):
 
-pipx uninstall dockerpkg --verbose
+# 1. Create a virtual environment
+python3 -m venv ~/dockerpkg-venv
+
+# 2. Activate the environment
+source ~/dockerpkg-venv/bin/activate
+
+# 3. Install dockerpkg
+pip install git+https://github.com/adeel26in/dockerpkg.git
+
+# 4. Test
+dockerpkg help
+
+Uninstallation (MacOS and Windows):
+
+pipx uninstall dockerpkg
+
+Uninstallation (Linux):
+
+rm -rf ~/dockerpkg-venv
+
