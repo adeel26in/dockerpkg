@@ -32,6 +32,7 @@ dockerpkg help
 Optional: Add an alias for easy access (Chaneg bashrc if using zsh):
 
 echo 'alias dockerpkg="~/dockerpkg-venv/bin/dockerpkg"' >> ~/.bashrc
+
 source ~/.bashrc
 
 # Uninstallation (MacOS and Windows):
