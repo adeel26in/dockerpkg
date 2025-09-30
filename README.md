@@ -10,7 +10,6 @@ Clone this repository and install with pipx (NOTE: First install pipx):
 
 pipx install --system-site-packages git+https://github.com/adeel26in/dockerpkg.git
 
-
 Uninstall instrcutions:
 
 If you installed dockerpkg via pipz, you can uninstall it easily:
