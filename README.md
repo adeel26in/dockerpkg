@@ -8,7 +8,7 @@ Installation (No requirements.txt):
 
 Clone this repository and install with pipx (NOTE: First install pipx):
 
-pipx install git+https://github.com/adeel26in/dockerpkg.git
+pipx install --system-site-packages git+https://github.com/adeel26in/dockerpkg.git
 
 
 Uninstall instrcutions:
